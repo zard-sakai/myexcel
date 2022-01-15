@@ -19,6 +19,7 @@ import org.apache.poi.xssf.usermodel.XSSFComment;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * sax处理
@@ -33,8 +34,9 @@ class XSSFSaxReadHandler<T> extends AbstractReadHandler<T> implements XSSFSheetX
 
     public XSSFSaxReadHandler(
             List<T> result,
+            Map<String, String> mergeCells,
             SaxExcelReader.ReadConfig<T> readConfig) {
-        super(false, result, readConfig);
+        super(false, result, mergeCells, readConfig);
     }
 
     @Override
@@ -54,7 +56,20 @@ class XSSFSaxReadHandler<T> extends AbstractReadHandler<T> implements XSSFSheetX
         if (cellReference == null) {
             return;
         }
-        int thisCol = (new CellReference(cellReference)).getCol();
+        CellReference cellRef = new CellReference(cellReference);
+        int thisCol = cellRef.getCol();
+        if (readConfig.detectedMerge) {
+            String pos = cellRef.getRow() + "_" + thisCol;
+            String mergeValue = mergeFirstCellMap.get(pos);
+            if (mergeValue != null) {
+                mergeFirstCellMap.put(pos, formattedValue);
+            } else {
+                String mergeValuePos = mergeCells.get(pos);
+                if (mergeValuePos != null) {
+                    formattedValue = mergeFirstCellMap.get(mergeValuePos);
+                }
+            }
+        }
         handleField(thisCol, formattedValue);
     }
 

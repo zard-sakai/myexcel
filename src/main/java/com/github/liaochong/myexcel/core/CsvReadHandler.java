@@ -39,7 +39,7 @@ class CsvReadHandler<T> extends AbstractReadHandler<T> {
     public CsvReadHandler(InputStream is,
                           SaxExcelReader.ReadConfig<T> readConfig,
                           List<T> result) {
-        super(true, result, readConfig);
+        super(true, result, null, readConfig);
         this.is = is;
     }
 

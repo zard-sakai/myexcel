@@ -41,9 +41,11 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -151,6 +153,11 @@ public class SaxExcelReader<T> {
 
     public SaxExcelReader<T> startSheet(BiConsumer<String, Integer> startSheetConsumer) {
         this.readConfig.startSheetConsumer = startSheetConsumer;
+        return this;
+    }
+
+    public SaxExcelReader<T> detectedMerge() {
+        this.readConfig.detectedMerge = true;
         return this;
     }
 
@@ -337,6 +344,10 @@ public class SaxExcelReader<T> {
      */
     private void process(OPCPackage xlsxPackage) throws IOException, OpenXML4JException, SAXException {
         long startTime = System.currentTimeMillis();
+        Map<Integer, Map<String, String>> sheetMergeMap = null;
+        if (readConfig.detectedMerge) {
+            sheetMergeMap = this.processSheetMerge(xlsxPackage);
+        }
         StringsCache stringsCache = new StringsCache();
         try {
             ReadOnlySharedStringsTable strings = new ReadOnlySharedStringsTable(xlsxPackage, stringsCache);
@@ -348,7 +359,10 @@ public class SaxExcelReader<T> {
                     ++index;
                     try (InputStream stream = iter.next()) {
                         readConfig.startSheetConsumer.accept(iter.getSheetName(), index);
-                        processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig), stream);
+                        processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig.detectedMerge ? sheetMergeMap.get(index) : null, readConfig), stream);
+                    }
+                    if (sheetMergeMap != null) {
+                        sheetMergeMap.remove(index);
                     }
                 }
             } else if (!readConfig.sheetNames.isEmpty()) {
@@ -357,7 +371,10 @@ public class SaxExcelReader<T> {
                     try (InputStream stream = iter.next()) {
                         if (readConfig.sheetNames.contains(iter.getSheetName())) {
                             readConfig.startSheetConsumer.accept(iter.getSheetName(), index);
-                            processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig), stream);
+                            processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig.detectedMerge ? sheetMergeMap.get(index) : null, readConfig), stream);
+                            if (sheetMergeMap != null) {
+                                sheetMergeMap.remove(index);
+                            }
                         }
                     }
                 }
@@ -367,7 +384,10 @@ public class SaxExcelReader<T> {
                     try (InputStream stream = iter.next()) {
                         if (readConfig.sheetIndexs.contains(index)) {
                             readConfig.startSheetConsumer.accept(iter.getSheetName(), index);
-                            processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig), stream);
+                            processSheet(strings, new XSSFSaxReadHandler<>(result, readConfig.detectedMerge ? sheetMergeMap.get(index) : null, readConfig), stream);
+                            if (sheetMergeMap != null) {
+                                sheetMergeMap.remove(index);
+                            }
                         }
                     }
                 }
@@ -378,6 +398,55 @@ public class SaxExcelReader<T> {
         log.info("Sax import takes {} ms", System.currentTimeMillis() - startTime);
     }
 
+    private Map<Integer, Map<String, String>> processSheetMerge(OPCPackage xlsxPackage) throws IOException, OpenXML4JException, SAXException {
+        XSSFReader.SheetIterator iter = (XSSFReader.SheetIterator) new XSSFReader(xlsxPackage).getSheetsData();
+        int index = -1;
+        Map<Integer, Map<String, String>> sheetMergeMap = new HashMap<>();
+        if (readConfig.readAllSheet) {
+            while (iter.hasNext()) {
+                ++index;
+                try (InputStream stream = iter.next()) {
+                    Map<String, String> mergeCells = new HashMap<>();
+                    this.processMergeOfSheet(new XSSFSheetMergeXMLHandler(mergeCells), stream);
+                    sheetMergeMap.put(index, mergeCells);
+                }
+            }
+        } else if (!readConfig.sheetNames.isEmpty()) {
+            while (iter.hasNext()) {
+                ++index;
+                try (InputStream stream = iter.next()) {
+                    if (readConfig.sheetNames.contains(iter.getSheetName())) {
+                        Map<String, String> mergeCells = new HashMap<>();
+                        this.processMergeOfSheet(new XSSFSheetMergeXMLHandler(mergeCells), stream);
+                        sheetMergeMap.put(index, mergeCells);
+                    }
+                }
+            }
+        } else {
+            while (iter.hasNext()) {
+                ++index;
+                try (InputStream stream = iter.next()) {
+                    if (readConfig.sheetIndexs.contains(index)) {
+                        Map<String, String> mergeCells = new HashMap<>();
+                        this.processMergeOfSheet(new XSSFSheetMergeXMLHandler(mergeCells), stream);
+                        sheetMergeMap.put(index, mergeCells);
+                    }
+                }
+            }
+        }
+        return sheetMergeMap;
+    }
+
+    private void processMergeOfSheet(XSSFSheetMergeXMLHandler xssfSheetMergeXMLHandler, InputStream stream) throws IOException, SAXException {
+        try {
+            XMLReader sheetParser = XMLHelper.newXMLReader();
+            sheetParser.setContentHandler(xssfSheetMergeXMLHandler);
+            sheetParser.parse(new InputSource(stream));
+        } catch (ParserConfigurationException e) {
+            throw new RuntimeException("SAX parser appears to be broken - " + e.getMessage());
+        }
+    }
+
     private void processMetaData(OPCPackage xlsxPackage) throws IOException, OpenXML4JException, SAXException {
         XSSFReader.SheetIterator iter = (XSSFReader.SheetIterator) new XSSFReader(xlsxPackage).getSheetsData();
         workbookMetaData = new WorkbookMetaData();
@@ -386,8 +455,8 @@ public class SaxExcelReader<T> {
             ++index;
             try (InputStream stream = iter.next()) {
                 try {
-                    SheetMetaData sheetMetaData = new SheetMetaData(iter.getSheetName(), index);
                     XMLReader sheetParser = XMLHelper.newXMLReader();
+                    SheetMetaData sheetMetaData = new SheetMetaData(iter.getSheetName(), index);
                     sheetParser.setContentHandler(new XSSFSheetMetaDataXMLHandler(sheetMetaData));
                     sheetParser.parse(new InputSource(stream));
                     // 设置元数据信息
@@ -417,14 +486,12 @@ public class SaxExcelReader<T> {
             SharedStrings strings,
             XSSFSheetXMLHandler.SheetContentsHandler sheetHandler,
             InputStream sheetInputStream) throws IOException, SAXException {
-        DataFormatter formatter = new DataFormatter();
-        InputSource sheetSource = new InputSource(sheetInputStream);
         try {
             XMLReader sheetParser = XMLHelper.newXMLReader();
             ContentHandler handler = new XSSFSheetXMLHandler(
-                    null, null, strings, sheetHandler, formatter, false);
+                    null, null, strings, sheetHandler, new DataFormatter(), false);
             sheetParser.setContentHandler(handler);
-            sheetParser.parse(sheetSource);
+            sheetParser.parse(new InputSource(sheetInputStream));
         } catch (ParserConfigurationException e) {
             throw new RuntimeException("SAX parser appears to be broken - " + e.getMessage());
         }
@@ -476,6 +543,10 @@ public class SaxExcelReader<T> {
         public BiConsumer<String, Integer> startSheetConsumer = (sheetName, sheetIndex) -> {
             log.info("Start read excel, sheet:{},index:{}", sheetName, sheetIndex);
         };
+        /**
+         * 识别合并
+         */
+        public boolean detectedMerge;
 
         public ReadConfig(int sheetIndex) {
             sheetIndexs.add(sheetIndex);

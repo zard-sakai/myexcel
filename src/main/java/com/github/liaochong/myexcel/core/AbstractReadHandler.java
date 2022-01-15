@@ -88,9 +88,18 @@ abstract class AbstractReadHandler<T> {
      * is blank row
      */
     protected boolean isBlankRow;
+    /**
+     * 合并单元格信息
+     */
+    protected Map<String, String> mergeCells;
+    /**
+     * 合并第一单元格映射
+     */
+    protected Map<String, String> mergeFirstCellMap = new HashMap<>();
 
     public AbstractReadHandler(boolean readCsv,
                                List<T> result,
+                               Map<String, String> mergeCells,
                                SaxExcelReader.ReadConfig<T> readConfig) {
         convertContext = new ConvertContext(readCsv);
         Class<T> dataType = readConfig.dataType;
@@ -103,6 +112,10 @@ abstract class AbstractReadHandler<T> {
         setConfiguration(dataType, isMapType);
         setResultHandlerFunction(result, readConfig);
         setFieldHandlerFunction(isMapType);
+        this.mergeCells = mergeCells;
+        if (mergeCells != null) {
+            mergeFirstCellMap = mergeCells.values().stream().collect(Collectors.toMap(m -> m, m -> ""));
+        }
     }
 
     private void setResultHandlerFunction(List<T> result, SaxExcelReader.ReadConfig<T> readConfig) {

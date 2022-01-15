@@ -58,18 +58,18 @@ import java.util.Set;
 class HSSFSaxReadHandler<T> extends AbstractReadHandler<T> implements HSSFListener {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(HSSFSaxReadHandler.class);
-    private Set<Integer> sheetIndexs;
+    private final Set<Integer> sheetIndexs;
 
     private String sheetName;
 
-    private POIFSFileSystem fs;
+    private final POIFSFileSystem fs;
 
     private int lastRowNumber = -1;
 
     /**
      * Should we output the formula, or the value it has?
      */
-    private boolean outputFormulaValues = true;
+    private final boolean outputFormulaValues = true;
 
     /**
      * For parsing Formulas
@@ -86,7 +86,7 @@ class HSSFSaxReadHandler<T> extends AbstractReadHandler<T> implements HSSFListen
      */
     private int sheetIndex = -1;
     private BoundSheetRecord[] orderedBSRs;
-    private List<BoundSheetRecord> boundSheetRecords = new ArrayList<>();
+    private final List<BoundSheetRecord> boundSheetRecords = new ArrayList<>();
 
     // For handling formulas with string results
     private int nextRow;
@@ -102,7 +102,7 @@ class HSSFSaxReadHandler<T> extends AbstractReadHandler<T> implements HSSFListen
     public HSSFSaxReadHandler(InputStream inputStream,
                               List<T> result,
                               SaxExcelReader.ReadConfig<T> readConfig) throws IOException {
-        super(false, result, readConfig);
+        super(false, result, null, readConfig);
         this.fs = new POIFSFileSystem(inputStream);
         this.sheetIndexs = readConfig.sheetIndexs;
     }
