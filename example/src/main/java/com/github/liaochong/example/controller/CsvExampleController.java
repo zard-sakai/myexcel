@@ -45,10 +45,6 @@ public class CsvExampleController {
 
     private List<ArtCrowd> getDataList() {
         List<ArtCrowd> dataList = new ArrayList<>(1000);
-        List<Long> list = new ArrayList<>();
-        list.add(134L);
-        list.add(6456L);
-        list.add(54354L);
         for (int i = 0; i < 100; i++) {
             ArtCrowd artCrowd = new ArtCrowd();
             if (i % 2 == 0) {
