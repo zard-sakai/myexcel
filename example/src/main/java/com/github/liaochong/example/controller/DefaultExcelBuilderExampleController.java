@@ -38,7 +38,7 @@ public class DefaultExcelBuilderExampleController {
     @GetMapping("/default/autoWidth/example")
     public void defaultBuildWithAutoWidth(HttpServletResponse response) throws Exception {
         List<ArtCrowd> dataList = this.getDataList();
-        Workbook workbook = DefaultExcelBuilder.of(ArtCrowd.class).widthStrategy(WidthStrategy.AUTO_WIDTH).build(dataList);
+        Workbook workbook = DefaultExcelBuilder.of(ArtCrowd.class).widthStrategy(WidthStrategy.NO_AUTO).build(dataList);
         AttachmentExportUtil.export(workbook, "艺术生信息", response);
     }
 
