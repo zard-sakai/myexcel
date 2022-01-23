@@ -24,7 +24,7 @@ public class DefaultExcelBuilderExampleController {
     @GetMapping("/default/excel/example")
     public void defaultBuild(HttpServletResponse response) throws Exception {
         List<ArtCrowd> dataList = this.getDataList();
-        Workbook workbook = DefaultExcelBuilder.of(ArtCrowd.class).build(dataList);
+        Workbook workbook = DefaultExcelBuilder.of(ArtCrowd.class).noStyle().build(dataList);
         AttachmentExportUtil.export(workbook, "艺术生信息", response);
     }
 
@@ -53,8 +53,8 @@ public class DefaultExcelBuilderExampleController {
     }
 
     private List<ArtCrowd> getDataList() {
-        List<ArtCrowd> dataList = new ArrayList<>(1000);
-        for (int i = 0; i < 1000; i++) {
+        List<ArtCrowd> dataList = new ArrayList<>();
+        for (int i = 0; i < 10000; i++) {
             ArtCrowd artCrowd = new ArtCrowd();
             if (i % 2 == 0) {
                 artCrowd.setName("Tom");

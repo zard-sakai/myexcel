@@ -21,14 +21,14 @@ import java.util.concurrent.Executors;
 @Controller
 public class DefaultStreamExcelBuilderExampleController {
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private ExecutorService executorService = Executors.newFixedThreadPool(24);
 
     @GetMapping("/default/excel/stream/example")
     public void streamBuild(HttpServletResponse response) throws Exception {
         try (DefaultStreamExcelBuilder<ArtCrowd> defaultExcelBuilder = DefaultStreamExcelBuilder.of(ArtCrowd.class)
                 .threadPool(executorService)
                 .start()) {
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 1; i++) {
                 // defaultExcelBuilder.append(this.getDataList());
                 defaultExcelBuilder.asyncAppend(this::getDataList);
             }
@@ -42,7 +42,7 @@ public class DefaultStreamExcelBuilderExampleController {
         DefaultStreamExcelBuilder<ArtCrowd> defaultExcelBuilder = DefaultStreamExcelBuilder.of(ArtCrowd.class)
                 .threadPool(executorService)
                 .start();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1; i++) {
             defaultExcelBuilder.asyncAppend(this::getDataList);
         }
         Workbook workbook = defaultExcelBuilder.build();
@@ -51,7 +51,7 @@ public class DefaultStreamExcelBuilderExampleController {
                 .threadPool(executorService)
                 .sheetName("sheet2")
                 .start();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1; i++) {
             defaultStreamExcelBuilder.asyncAppend(this::getDataList);
         }
         workbook = defaultStreamExcelBuilder.build();
@@ -59,8 +59,8 @@ public class DefaultStreamExcelBuilderExampleController {
     }
 
     private List<ArtCrowd> getDataList() {
-        List<ArtCrowd> dataList = new ArrayList<>(1000);
-        for (int i = 0; i < 1000; i++) {
+        List<ArtCrowd> dataList = new ArrayList<>();
+        for (int i = 0; i < 1000000; i++) {
             ArtCrowd artCrowd = new ArtCrowd();
             if (i % 2 == 0) {
                 artCrowd.setName("Tom");
