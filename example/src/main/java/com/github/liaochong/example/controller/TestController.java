@@ -9,6 +9,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.liaochong.example.test.ExcelColumnInfo;
 import com.github.liaochong.myexcel.core.DefaultStreamExcelBuilder;
 import com.github.liaochong.myexcel.utils.AttachmentExportUtil;
+import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -128,12 +129,27 @@ public class TestController {
             if (dataList.size() == DEFAULT_MAX_ROW) {//每30w条创建一个工作簿
                 //创建工作簿
                 workBookNum++;
-                workbook = ExcelExportUtil.exportExcel(dataList, ExcelType.XSSF);
-                dataList.clear();
+                workbook = ExcelExportUtil.exportBigExcel(new ExportParams(null, null), excelExportEntityList, new IExcelExportServer() {
+                    @Override
+                    public List<Object> selectListForExcelExport(Object o, int i) {
+                        if(i > 1){//执行一次就结束循环
+                            dataList.clear();
+                        }
+                        return Lists.newArrayList(dataList.toArray());
+                    }
+                },null);
             }
         }
         if (workBookNum * DEFAULT_MAX_ROW < resultNum) {
-            workbook = ExcelExportUtil.exportExcel(dataList, ExcelType.XSSF);
+            workbook = ExcelExportUtil.exportBigExcel(new ExportParams(null, null), excelExportEntityList, new IExcelExportServer() {
+                @Override
+                public List<Object> selectListForExcelExport(Object o, int i) {
+                    if(i > 1){//执行一次就结束循环
+                        dataList.clear();
+                    }
+                    return Lists.newArrayList(dataList.toArray());
+                }
+            },null);
         }
         long endTime = System.currentTimeMillis();
         logger.info("sxssf mode export excel: cost "+(endTime - startTime));
