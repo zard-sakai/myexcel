@@ -1,0 +1,2 @@
+jmap -dump:live,format=b,file=d:/dump/heap-dump_stream.bin pid
+jmap -dump:live,format=b,file=d:/dump/heap-dump_sxssf.bin pid
